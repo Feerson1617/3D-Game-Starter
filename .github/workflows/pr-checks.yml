@@ -1,0 +1,43 @@
+name: 3D Starter – PR-Vorschau bauen
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+# Source code from a pull request runs ONLY with read permissions and no secrets.
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Branch laden
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Abhaengigkeiten installieren
+        shell: bash
+        run: |
+          if [[ -f package-lock.json ]]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+      - name: Schnelltests und Build
+        run: npm run check
+      - name: Vorschau-Metadaten anhaengen
+        shell: bash
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          printf '{"pr":%s,"head_sha":"%s"}\n' "$PR_NUMBER" "$PR_HEAD_SHA" > dist/.preview-info.json
+      - name: Vorschau als Artefakt sichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-pr-${{ github.event.pull_request.number }}
+          path: dist
+          include-hidden-files: true
+          retention-days: 7

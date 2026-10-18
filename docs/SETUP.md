@@ -29,7 +29,9 @@ Diese Anleitung ist für GitHub im Browser, GitHub Desktop und Codex Cloud ausge
 
 ## Wenn Codex bei der Umgebung einrichtet
 
-> Dieses GitHub-Repository nutzt Node.js 22, Vite, Three.js und Playwright. Prüfe zuerst die vorhandenen Werkzeuge, führe nur bei Bedarf `npm install` und `npx playwright install chromium` aus. Teste `npm run check` und einmal den Start der 3D-Vorschau. Erstelle einen `package-lock.json` durch `npm install` und sichere ihn über einen eigenen Branch/PR. Wiederhole keine unnötigen 3D-Gesamttests. Bewahre die `AGENTS.md` und das kostenlose GitHub-Pages-/PR-Vorschausystem.
+> Dieses GitHub-Repository nutzt Node.js 22 ab 22.12, Vite, Three.js und Playwright. Prüfe zuerst vorhandene Werkzeuge und verwende das mitgelieferte Lockfile mit `npm ci`. Installiere Testbrowser nur bei Bedarf. Teste `npm run check` und gezielt `npm run test:e2e -- --project=chromium-desktop`; für WebKit zusätzlich den kostenlosen Playwright-Browser installieren. Wiederhole keine unnötigen 3D-Gesamttests. Bewahre die `AGENTS.md` und das kostenlose GitHub-Pages-/PR-Vorschausystem. Neue Arbeiten immer in einem Branch und Pull Request; kein Merge ohne meine Freigabe.
+
+Für Codex Cloud auf Web oder Desktop **Work in → Cloud → Select environment → Create environment** wählen, das neue GitHub-Repository auswählen und **Get started** anklicken. Codex soll die oben beschriebene Node-Umgebung vorbereiten. Den Einrichtungsbericht prüfen, dann **Publish** und **Start a new task** wählen. Falls deine Oberfläche noch die ältere Cloud-Umgebung zeigt, kann derselbe Installationsschritt als Setup-Skript hinterlegt werden. Die Vorlage benötigt keinen API-Schlüssel und keinen weiteren Dienst. Der vorhandene Codex-Zugang und sein Kontingent gelten weiterhin. [Offizielle Cloud-Anleitung](https://learn.chatgpt.com/docs/cloud), [Cloud-Umgebungen](https://learn.chatgpt.com/docs/environments/cloud-environments).
 
 ## Sicherheit und Kosten
 

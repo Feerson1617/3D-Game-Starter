@@ -23,3 +23,22 @@ test('Lokaler Speicher darf ausfallen, ohne die Anwendung abzustuerzen',()=>{
   assert.equal(saveState(DEFAULTS,storage),false);
   assert.equal(resetState(storage),false);
 });
+test('Repositorys und mehrere PRs teilen keine Spielstände',async()=>{
+  const previous=globalThis.location;
+  const modules=[];
+  const storage=fakeStorage();
+  try {
+    for(const path of ['/Neues-Spiel/','/Anderes-Spiel/','/Neues-Spiel/pr-preview/pr-1/','/Neues-Spiel/pr-preview/pr-2/','/pr-preview/pr-1/']) {
+      globalThis.location={pathname:path};
+      modules.push(await import(`../../src/core/storage.js?scope=${encodeURIComponent(path)}`));
+    }
+    modules[0].saveState({...DEFAULTS,quality:'high'},storage);
+    for(const mod of modules.slice(1)) assert.equal(mod.loadState(storage),null);
+    modules[2].saveState({...DEFAULTS,quality:'low'},storage);
+    assert.equal(modules[0].loadState(storage).quality,'high');
+    assert.equal(modules[2].loadState(storage).quality,'low');
+    assert.equal(modules[3].loadState(storage),null);
+  } finally {
+    if(previous===undefined) delete globalThis.location; else globalThis.location=previous;
+  }
+});

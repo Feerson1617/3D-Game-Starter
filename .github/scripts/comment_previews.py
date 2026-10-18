@@ -3,9 +3,16 @@ import json
 import os
 from pathlib import Path
 from urllib.request import Request, urlopen
+from urllib.parse import quote
 
 REPO=os.environ.get('GITHUB_REPOSITORY', '')
 TOKEN=os.environ.get('GH_TOKEN', '')
+
+
+def pages_url(repository):
+    owner, repo = repository.split('/', 1)
+    prefix = '' if repo.lower() == f'{owner.lower()}.github.io' else f'/{quote(repo)}'
+    return f'https://{owner.lower()}.github.io{prefix}'
 
 
 def api(url, body=None):
@@ -18,7 +25,6 @@ def api(url, body=None):
 
 def main():
     if not REPO or not TOKEN: return
-    owner, repo = REPO.split('/',1)
     for pr in api('/pulls?state=open&per_page=100'):
         n=pr['number']
         if not (Path('site')/'pr-preview'/f'pr-{n}'/'index.html').is_file(): continue
@@ -26,8 +32,8 @@ def main():
         try:
             comments=api(f'/issues/{n}/comments?per_page=100')
             if any(marker in c.get('body','') for c in comments): continue
-            link=f'https://{owner.lower()}.github.io/{repo}/pr-preview/pr-{n}/'
-            api(f'/issues/{n}/comments', {'body':f'{marker}\n🐠 **Spielvorschau:** {link}\n\nHier kannst du den aktuellen Entwicklungsstand vor dem Merge direkt im Browser testen. Die Vorschau ist öffentlich.'})
+            link=f'{pages_url(REPO)}/pr-preview/pr-{n}/'
+            api(f'/issues/{n}/comments', {'body':f'{marker}\n**3D-Vorschau:** {link}\n\nHier kannst du den aktuellen Entwicklungsstand vor dem Merge direkt im Browser testen. Die Vorschau ist öffentlich.'})
         except Exception as exc:
             # Missing optional comment permissions must not roll back a deployment.
             print(f'PR #{n}: preview link comment could not be posted: {exc}')

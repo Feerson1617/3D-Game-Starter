@@ -39,7 +39,14 @@ try {
   el('save').addEventListener('click',()=>feedback(saveState(readState()) ? 'Einstellungen lokal gespeichert.' : 'Speichern ist in diesem Browser nicht verfügbar.'));
   el('load').addEventListener('click',()=>{const saved=loadState();if(saved){applyState(saved);feedback('Gespeicherte Einstellungen geladen.');}else feedback('Kein gültiger Spielstand gefunden.');});
   el('reset').addEventListener('click',()=>{resetState();applyState(DEFAULTS);feedback('Testzustand zurückgesetzt.');});
-  window.addEventListener('pagehide',()=>scene?.dispose(),{once:true});
+  // Safari may preserve this page in its back/forward cache. Keep that renderer alive.
+  window.addEventListener('pagehide',(event)=>{if(!event.persisted) scene?.dispose();});
+  el('canvas-host').addEventListener('graphics-state',({detail})=>{
+    const ready=detail==='ready';
+    status.dataset.ready=String(ready);
+    status.textContent=ready ? '3D bereit' : detail==='lost' ? 'Grafik wird wiederhergestellt …' : '3D-Fehler';
+    feedback(ready ? 'Grafik wiederhergestellt.' : 'Bei anhaltendem Grafikfehler die Seite neu laden oder eine sparsamere Grafikqualität wählen.');
+  });
 } catch (error) {
   console.error('3D-Initialisierung fehlgeschlagen:', error);
   status.textContent='3D nicht verfügbar';

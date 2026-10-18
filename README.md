@@ -37,7 +37,7 @@
 Einmalig Node.js 22+ bereitstellen. Danach im Projektordner:
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
@@ -49,7 +49,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Nach der ersten Installation bitte die automatisch erzeugte **`package-lock.json` committen**; die Workflows benutzen dann reproduzierbar `npm ci`. Solange sie noch fehlt, verwenden sie `npm install`. Die stabile Website und die PR-Vorschauen werden mit `base: './'` gebaut, damit dieselben Assets auch unter Unterpfaden korrekt geladen werden.
+Das mitgelieferte **`package-lock.json`** sichert reproduzierbare Installationen mit `npm ci`. Für den vollständigen lokalen Browserlauf zunächst `npx playwright install chromium webkit` ausführen; für einen schlanken Chromium-Lauf `npm run test:e2e -- --project=chromium-desktop`. Die stabile Website und die PR-Vorschauen werden mit `base: './'` gebaut, damit dieselben Assets auch unter Unterpfaden korrekt geladen werden.
 
 ## Was kostet das?
 

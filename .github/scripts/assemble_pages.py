@@ -10,7 +10,8 @@ from pathlib import Path
 import shutil
 import stat
 import sys
-from urllib.request import Request, urlopen
+from urllib.request import Request, HTTPRedirectHandler, build_opener
+from urllib.parse import urlsplit
 from zipfile import ZipFile
 
 REPO = os.environ.get('GITHUB_REPOSITORY', '')
@@ -22,6 +23,20 @@ MAX_FILE_BYTES = 25_000_000
 MAX_PREVIEW_BYTES = 100_000_000
 
 
+class SafeRedirect(HTTPRedirectHandler):
+    """GitHub redirects artifacts to signed storage URLs; never forward its token."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if urlsplit(newurl).scheme != 'https':
+            raise ValueError('Artifact redirect must use HTTPS')
+        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if redirected is not None and urlsplit(req.full_url).netloc != urlsplit(newurl).netloc:
+            redirected.remove_header('Authorization')
+        return redirected
+
+
+opener = build_opener(SafeRedirect())
+
+
 def github(path, raw=False):
     url = path if path.startswith('https://') else f'https://api.github.com/repos/{REPO}{path}'
     req = Request(url, headers={
@@ -30,7 +45,7 @@ def github(path, raw=False):
         'X-GitHub-Api-Version': '2022-11-28',
         'User-Agent': '3D-game-starter-preview'
     })
-    with urlopen(req, timeout=35) as response:
+    with opener.open(req, timeout=35) as response:
         data = response.read(MAX_PREVIEW_BYTES + 4_000_000)
     if len(data) > MAX_PREVIEW_BYTES and raw:
         raise ValueError('Artifact is too large')

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101e28">
+  <meta name="description" content="Modularer, kostenfreier 3D-Spiele-Starter für Browser und Schul-iPads">
+  <title>3D Game Starter – Vorschau</title>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div>
+        <span class="eyebrow">MODULARES SPIELEPROJEKT</span>
+        <h1>3D Game Starter</h1>
+        <p>Eine technische Testwelt – noch kein fertiges Spiel.</p>
+      </div>
+      <span class="status" id="status" role="status" aria-live="polite">Wird vorbereitet …</span>
+    </header>
+    <main class="workspace">
+      <section class="stage" aria-label="Interaktive 3D-Testszene">
+        <div id="canvas-host" class="canvas-host" tabindex="0" aria-label="3D-Ansicht: Ziehen zum Drehen, Wischen auf Touchgeräten, Scrollen zum Zoomen"></div>
+        <div class="scene-hint">Ziehen: Kamera drehen · Mausrad oder Zwei-Finger-Geste: zoomen</div>
+        <noscript>Bitte aktiviere JavaScript, um die 3D-Vorschau zu verwenden.</noscript>
+      </section>
+      <aside class="controls" aria-label="Einstellungen">
+        <h2>Werkzeuge</h2>
+        <label for="quality">Grafikqualität</label>
+        <select id="quality">
+          <option value="low">Sparsam (ältere iPads)</option>
+          <option value="medium">Ausgewogen</option>
+          <option value="high">Hoch</option>
+        </select>
+        <label for="object">Objekt betrachten</label>
+        <select id="object">
+          <option value="stone">Naturstein</option>
+          <option value="wood">Holzstruktur</option>
+          <option value="ceramic">Keramik</option>
+        </select>
+        <p class="description" id="object-info" aria-live="polite"></p>
+        <button id="reset-camera" type="button">Kamera zurücksetzen</button>
+        <div class="divider"></div>
+        <h2>Spielstand-Test</h2>
+        <p class="subtle">Hier werden nur Anzeigeeinstellungen und die Kamera lokal gespeichert.</p>
+        <button id="save" type="button">Speichern</button>
+        <button id="load" type="button">Laden</button>
+        <button id="reset" type="button" class="secondary">Zurücksetzen</button>
+        <p id="message" class="feedback" role="status" aria-live="polite"></p>
+      </aside>
+    </main>
+    <footer>Three.js · WebGL · Keine externen Laufzeitdienste · Demo-Materialien statt fertiger Fotomodelle</footer>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

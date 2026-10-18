@@ -1,0 +1,27 @@
+:root { color-scheme: dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #101e28; color: #f0f4f5; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+#app { width: min(1440px, 100%); margin: 0 auto; padding: clamp(14px, 2.5vw, 28px); }
+.topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.topbar h1 { margin: 3px 0 1px; font-size: clamp(24px, 3vw, 38px); font-weight: 650; letter-spacing: -.035em; }
+.topbar p { color: #9cbbc2; margin: 4px 0; }
+.eyebrow { letter-spacing: .16em; color: #78b2ba; font-size: 11px; font-weight: 700; }
+.status { border: 1px solid #51727b; padding: 8px 13px; border-radius: 99px; font-size: 13px; }
+.workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(230px, 275px); gap: 16px; align-items: start; }
+.stage { min-width: 0; border-radius: 16px; overflow: hidden; border: 1px solid #425963; background: #253c44; }
+.canvas-host { position: relative; width: 100%; aspect-ratio: 16/10; min-height: 270px; touch-action: none; outline-offset: -4px; }
+.canvas-host canvas { display: block; width: 100%; height: 100%; }
+.scene-hint { color: #bcd5d7; font-size: 12px; padding: 10px 14px; background: #1a3039; }
+.controls { border: 1px solid #425963; border-radius: 16px; background: #192c36; padding: 17px; display: grid; gap: 10px; }
+.controls h2 { font-size: 17px; margin: 0 0 2px; font-weight: 650; }
+.controls label { font-size: 13px; color: #c5dade; margin-top: 4px; }
+button, select { width: 100%; min-height: 44px; color: #f2fbff; background: #27434b; border: 1px solid #60818a; padding: 10px 12px; border-radius: 9px; font: inherit; font-size: 14px; cursor: pointer; }
+button:hover { background: #355b62; }
+button:focus-visible, select:focus-visible, .canvas-host:focus-visible { outline: 3px solid #b1e2eb; outline-offset: 2px; }
+button.secondary { background: transparent; }
+.subtle, .description, .feedback { font-size: 13px; color: #bcd4d8; margin: 2px 0 8px; line-height: 1.5; }
+.feedback { min-height: 16px; color: #e4f4bb; }
+.divider { border-top: 1px solid #43606b; margin: 6px 0; }
+footer { color: #8daeb6; font-size: 12px; padding-top: 16px; }
+@media (max-width: 740px) { .workspace { grid-template-columns: 1fr; } .canvas-host { aspect-ratio: 4/3; min-height: 230px; } .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); } .controls h2, .controls .divider, .controls .subtle, .controls .description, .controls .feedback { grid-column: 1/-1; } .controls label { grid-column: 1/-1; } .controls select { grid-column: 1/-1; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }

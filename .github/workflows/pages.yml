@@ -1,0 +1,64 @@
+name: 3D Starter – Website und Vorschauen veröffentlichen
+
+on:
+  push:
+    branches: [main]
+  workflow_run:
+    workflows: ["3D Starter – PR-Vorschau bauen"]
+    types: [completed]
+  workflow_dispatch:
+
+# The privileged workflow is taken from main. It never checks out or executes PR code.
+permissions:
+  contents: read
+
+concurrency:
+  group: game-starter-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Freigegebenes main laden
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Abhaengigkeiten installieren
+        shell: bash
+        run: |
+          if [[ -f package-lock.json ]]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+      - name: Hauptversion bauen
+        run: npm run check
+      - name: Sicherheitspruefung des Vorschau-Entpackers
+        run: python3 -m unittest discover -s tests/python -p 'test_*.py'
+      - name: Alle gueltigen PR-Builds ohne Codeausfuehrung sammeln
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/assemble_pages.py
+      - name: Pages-Artefakt hochladen
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - name: Website bereitstellen
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Vorschau-Links auf Pull Requests posten
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/comment_previews.py

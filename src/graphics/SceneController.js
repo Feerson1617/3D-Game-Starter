@@ -37,14 +37,22 @@ export class SceneController {
     this.scene.add(sun);
     this.sun=sun;
     this.world=createWorld(this.scene);
+    this.models=new Set();
     this.raycaster=new THREE.Raycaster();
     this.pointer=new THREE.Vector2();
     this.isRunning=true;
-    this.clickStart=null;
-    this.onDown=(ev)=>{this.clickStart={x:ev.clientX,y:ev.clientY};};
+    this.pointers=new Map();
+    this.gesture=false;
+    this.onDown=(ev)=>{
+      if (ev.button !== 0) return;
+      if (this.pointers.size === 0) this.gesture=false;
+      this.pointers.set(ev.pointerId,{x:ev.clientX,y:ev.clientY});
+      if (this.pointers.size > 1) this.gesture=true;
+    };
     this.onUp=(ev)=>{
-      if (!this.clickStart || Math.hypot(ev.clientX-this.clickStart.x,ev.clientY-this.clickStart.y)>7) return;
-      this.clickStart=null;
+      const start=this.pointers.get(ev.pointerId);
+      this.pointers.delete(ev.pointerId);
+      if (!start || this.gesture || Math.hypot(ev.clientX-start.x,ev.clientY-start.y)>7) return;
       const rect=this.renderer.domElement.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
       this.pointer.set((ev.clientX-rect.left)/rect.width*2-1,-(ev.clientY-rect.top)/rect.height*2+1);
@@ -52,20 +60,63 @@ export class SceneController {
       const hits=this.raycaster.intersectObjects(Object.values(this.world.selectable),false);
       if (hits[0]?.object.userData.selectable) this.onSelect(hits[0].object.userData.selectable);
     };
+    this.onCancel=(ev)=>{this.pointers.delete(ev.pointerId);this.gesture=true;};
     this.renderer.domElement.addEventListener('pointerdown',this.onDown);
     this.renderer.domElement.addEventListener('pointerup',this.onUp);
+    this.renderer.domElement.addEventListener('pointercancel',this.onCancel);
+    this.onContextLost=()=>{
+      this.contextLost=true;
+      cancelAnimationFrame(this.frameHandle);
+      this.host.dispatchEvent(new CustomEvent('graphics-state',{detail:'lost'}));
+    };
+    this.onContextRestored=()=>{
+      this.contextLost=false;
+      this.previous=performance.now();
+      this.resize();
+      this.host.dispatchEvent(new CustomEvent('graphics-state',{detail:'ready'}));
+      this.schedule();
+    };
+    this.renderer.domElement.addEventListener('webglcontextlost',this.onContextLost);
+    this.renderer.domElement.addEventListener('webglcontextrestored',this.onContextRestored);
+    this.onVisibility=()=>{
+      cancelAnimationFrame(this.frameHandle);
+      this.previous=performance.now();
+      this.schedule();
+    };
+    document.addEventListener('visibilitychange',this.onVisibility);
     this.resizeObserver=new ResizeObserver(()=>this.resize());
     this.resizeObserver.observe(host);
     this.setQuality(quality);
     this.setCamera(DEFAULTS.camera);
     this.resize();
-    this.frame=()=>{
-      if(!this.isRunning) return;
-      if(!document.hidden) { this.controls.update(); this.renderer.render(this.scene,this.camera); }
-      this.frameHandle=requestAnimationFrame(this.frame);
+    this.previous=performance.now();
+    this.frame=(now)=>{
+      if(!this.isRunning || document.hidden || this.contextLost) return;
+      const dt=Math.min(Math.max((now-this.previous)/1000,0),.1);
+      this.previous=now;
+      try {
+        this.models.forEach(model=>model.update(dt));
+        this.controls.update(dt);
+        this.renderer.render(this.scene,this.camera);
+        this.schedule();
+      } catch(error) {
+        this.isRunning=false;
+        this.host.dispatchEvent(new CustomEvent('graphics-state',{detail:'error'}));
+        console.error('3D-Darstellung fehlgeschlagen:',error);
+      }
     };
-    this.frameHandle=requestAnimationFrame(this.frame);
+    this.schedule();
   }
+  schedule(){ if(this.isRunning && !document.hidden && !this.contextLost) this.frameHandle=requestAnimationFrame(this.frame); }
+  async addModel(filename, options={}) {
+    const [{loadGLTF},{ModelInstance}]=await Promise.all([import('./assets.js'),import('./ModelInstance.js')]);
+    const gltf=await loadGLTF(filename,options);
+    const model=new ModelInstance(gltf,this.scene,options);
+    if (!this.isRunning) { model.dispose(); throw new Error('Die 3D-Szene ist nicht mehr verfügbar.'); }
+    this.models.add(model);
+    return model;
+  }
+  removeModel(model){ this.models.delete(model); model.dispose(); }
   setQuality(name) {
     const preset=QUALITY[name] || QUALITY.medium;
     this.quality = Object.hasOwn(QUALITY,name) ? name : 'medium';
@@ -96,9 +147,14 @@ export class SceneController {
     return { x:this.camera.position.x,y:this.camera.position.y,z:this.camera.position.z,target:this.controls.target.toArray() };
   }
   setCamera({x,y,z,target}) {
+    // Flush OrbitControls' pending damping before restoring an exact saved pose.
+    const damping=this.controls.enableDamping;
+    this.controls.enableDamping=false;
+    this.controls.update();
     this.camera.position.set(x,y,z);
     this.controls.target.fromArray(target);
     this.controls.update();
+    this.controls.enableDamping=damping;
   }
   resetCamera(){ this.setCamera(DEFAULTS.camera); }
   dispose(){
@@ -107,8 +163,15 @@ export class SceneController {
     this.resizeObserver.disconnect();
     this.renderer.domElement.removeEventListener('pointerdown',this.onDown);
     this.renderer.domElement.removeEventListener('pointerup',this.onUp);
+    this.renderer.domElement.removeEventListener('pointercancel',this.onCancel);
+    this.renderer.domElement.removeEventListener('webglcontextlost',this.onContextLost);
+    this.renderer.domElement.removeEventListener('webglcontextrestored',this.onContextRestored);
+    document.removeEventListener('visibilitychange',this.onVisibility);
+    this.models.forEach(model=>model.dispose());
+    this.models.clear();
     this.controls.dispose();
     this.world.dispose();
+    this.sun.shadow.map?.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }

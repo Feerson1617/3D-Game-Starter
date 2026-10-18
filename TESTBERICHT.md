@@ -1,5 +1,7 @@
 # Prüfprotokoll – lokale Erstellung der Vorlage
 
+**Dieser Bericht ist historisch (vor dem GitHub-Upload). Den aktuellen Stand enthält die [technische Abschlussprüfung vom 18. Oktober 2026](docs/PRUEFUNG-2026-10-18.md).**
+
 Erstellt am 16. Oktober 2026. Hier geprüfter Stand: ZIP-Paket vor erstem GitHub-Upload.
 
 **Tatsächlich durchgeführt:**

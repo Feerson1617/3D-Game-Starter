@@ -10,7 +10,8 @@ from pathlib import Path
 import shutil
 import stat
 import sys
-from urllib.request import Request, urlopen
+from urllib.request import Request, HTTPRedirectHandler, build_opener
+from urllib.parse import urlsplit
 from zipfile import ZipFile
 
 REPO = os.environ.get('GITHUB_REPOSITORY', '')
@@ -22,6 +23,20 @@ MAX_FILE_BYTES = 25_000_000
 MAX_PREVIEW_BYTES = 100_000_000
 
 
+class SafeRedirect(HTTPRedirectHandler):
+    """GitHub redirects artifacts to signed storage URLs; never forward its token."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if urlsplit(newurl).scheme != 'https':
+            raise ValueError('Artifact redirect must use HTTPS')
+        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if redirected is not None and urlsplit(req.full_url).netloc != urlsplit(newurl).netloc:
+            redirected.remove_header('Authorization')
+        return redirected
+
+
+opener = build_opener(SafeRedirect())
+
+
 def github(path, raw=False):
     url = path if path.startswith('https://') else f'https://api.github.com/repos/{REPO}{path}'
     req = Request(url, headers={
@@ -30,7 +45,7 @@ def github(path, raw=False):
         'X-GitHub-Api-Version': '2022-11-28',
         'User-Agent': '3D-game-starter-preview'
     })
-    with urlopen(req, timeout=35) as response:
+    with opener.open(req, timeout=35) as response:
         data = response.read(MAX_PREVIEW_BYTES + 4_000_000)
     if len(data) > MAX_PREVIEW_BYTES and raw:
         raise ValueError('Artifact is too large')
@@ -87,6 +102,13 @@ def main():
         return
 
     runs = github('/actions/workflows/pr-checks.yml/runs?event=pull_request&per_page=100').get('workflow_runs', [])
+    event_path = os.environ.get('GITHUB_EVENT_PATH')
+    event = json.loads(Path(event_path).read_text()) if event_path else {}
+    trigger = event.get('workflow_run', {})
+    expected = set()
+    if trigger.get('conclusion') == 'success':
+        associated = {p['number'] for p in trigger.get('pull_requests', [])}
+        expected = {p['number'] for p in prs if p['number'] in associated and p['head']['sha'] == trigger.get('head_sha')}
     manifest_urls = []
     for pr in prs:
         n, sha = pr['number'], pr['head']['sha']
@@ -109,8 +131,12 @@ def main():
                 raise
             manifest_urls.append(n)
         except Exception as exc:
-            print(f'PR #{n}: unavailable or invalid preview: {exc}')
+            print(f'::warning::PR #{n}: unavailable or invalid preview: {exc}')
     print('Ready previews:', manifest_urls)
+    missing = expected - set(manifest_urls)
+    if missing:
+        # Do not report a green deployment after silently omitting the triggering PR.
+        raise RuntimeError(f'Current successful PR build has no valid preview: {sorted(missing)}')
 
 
 if __name__ == '__main__':

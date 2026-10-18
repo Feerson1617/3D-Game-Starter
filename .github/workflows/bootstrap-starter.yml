@@ -1,0 +1,54 @@
+name: Starterpaket einmalig importieren
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/bootstrap-starter.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository laden
+        uses: actions/checkout@v4
+      - name: Projektpaket entpacken und Integritaet pruefen
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, io, tarfile
+          from pathlib import Path
+
+          payload = base64.b64decode(
+              Path(".starter-import-once.tar.gz.b64").read_text().strip(),
+              validate=True,
+          )
+          expected = "9a948e42081401dec4de17c3812176c5025debeeb6c576254b711d2895dd7ed5"
+          assert hashlib.sha256(payload).hexdigest() == expected, "Archiv-Pruefsumme stimmt nicht!"
+          count = 0
+          with tarfile.open(fileobj=io.BytesIO(payload), mode="r:gz") as archive:
+              for member in archive:
+                  path = Path(member.name)
+                  if path.is_absolute() or ".." in path.parts or not member.isfile():
+                      raise ValueError(f"Unerwarteter Archiv-Eintrag: {member.name}")
+                  if path.parts[:2] == (".github", "workflows"):
+                      # Workflows werden sicherheitshalber separat durch die
+                      # verbundene GitHub-Integration hochgeladen.
+                      continue
+                  path.parent.mkdir(parents=True, exist_ok=True)
+                  path.write_bytes(archive.extractfile(member).read())
+                  count += 1
+          assert count >= 30, f"Nur {count} Dateien extrahiert"
+          Path(".starter-import-once.tar.gz.b64").unlink()
+          print(f"{count} Starterdateien importiert.")
+          PY
+      - name: Neue Dateien in main sichern
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Import modular 3D starter source, tests and documentation"
+          git push origin HEAD:main

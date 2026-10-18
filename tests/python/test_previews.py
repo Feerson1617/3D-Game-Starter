@@ -65,6 +65,16 @@ class PagesUrlTests(unittest.TestCase):
         self.assertEqual(comments.pages_url('Teacher/Teacher.github.io'),'https://teacher.github.io')
 
 class AssemblyTests(unittest.TestCase):
+    def test_current_preview_failure_does_not_silently_deploy(self):
+        prs=[{'number':1,'head':{'sha':'current','repo':{'full_name':'owner/repo'}}}]
+        def api(path,raw=False):
+            if path.startswith('/pulls?'): return prs
+            return {'workflow_runs':[]}
+        with tempfile.TemporaryDirectory() as path:
+            root=Path(path);(root/'dist').mkdir();(root/'dist/index.html').write_text('production')
+            event=root/'event.json';event.write_text(json.dumps({'workflow_run':{'conclusion':'success','head_sha':'current','pull_requests':[{'number':1}]}}))
+            with patch.multiple(mod,ROOT=root,SITE=root/'site',REPO='owner/repo',TOKEN='test'),patch.object(mod,'github',api),patch.dict('os.environ',{'GITHUB_EVENT_PATH':str(event)}):
+                with self.assertRaises(RuntimeError): mod.main()
     def test_multiple_previews_and_closed_cleanup_preserve_main(self):
         prs=[{'number':n,'head':{'sha':f'sha-{n}','repo':{'full_name':'owner/repo'}}} for n in [1,2]]
         runs=[{'id':n,'pull_requests':[{'number':n}],'conclusion':'success'} for n in [1,2]]

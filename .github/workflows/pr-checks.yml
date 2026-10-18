@@ -7,6 +7,7 @@ on:
 # Source code from a pull request runs ONLY with read permissions and no secrets.
 permissions:
   contents: read
+  actions: read
 
 jobs:
   preview:
@@ -27,6 +28,8 @@ jobs:
           if [[ -f package-lock.json ]]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
       - name: Schnelltests und Build
         run: npm run check
+      - name: Vorschau-Sicherheit und Zusammenstellung pruefen
+        run: python3 -m unittest discover -s tests/python -p 'test_*.py'
       - name: Vorschau-Metadaten anhaengen
         shell: bash
         env:
@@ -35,9 +38,17 @@ jobs:
         run: |
           printf '{"pr":%s,"head_sha":"%s"}\n' "$PR_NUMBER" "$PR_HEAD_SHA" > dist/.preview-info.json
       - name: Vorschau als Artefakt sichern
+        id: artifact
         uses: actions/upload-artifact@v4
         with:
           name: preview-pr-${{ github.event.pull_request.number }}
           path: dist
           include-hidden-files: true
           retention-days: 7
+      - name: Echten Artefakt-Download und sichere Extraktion pruefen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIEW_ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 tests/python/check_live_artifact.py

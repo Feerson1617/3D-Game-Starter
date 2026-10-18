@@ -23,6 +23,17 @@ test('Lokaler Speicher darf ausfallen, ohne die Anwendung abzustuerzen',()=>{
   assert.equal(saveState(DEFAULTS,storage),false);
   assert.equal(resetState(storage),false);
 });
+test('Auch der Zugriff auf localStorage selbst darf gesperrt sein',()=>{
+  const descriptor=Object.getOwnPropertyDescriptor(globalThis,'localStorage');
+  try {
+    Object.defineProperty(globalThis,'localStorage',{configurable:true,get(){throw Error('SecurityError');}});
+    assert.equal(saveState(DEFAULTS),false);
+    assert.equal(loadState(),null);
+    assert.equal(resetState(),false);
+  } finally {
+    if(descriptor) Object.defineProperty(globalThis,'localStorage',descriptor); else delete globalThis.localStorage;
+  }
+});
 test('Repositorys und mehrere PRs teilen keine Spielstände',async()=>{
   const previous=globalThis.location;
   const modules=[];

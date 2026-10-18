@@ -102,6 +102,13 @@ def main():
         return
 
     runs = github('/actions/workflows/pr-checks.yml/runs?event=pull_request&per_page=100').get('workflow_runs', [])
+    event_path = os.environ.get('GITHUB_EVENT_PATH')
+    event = json.loads(Path(event_path).read_text()) if event_path else {}
+    trigger = event.get('workflow_run', {})
+    expected = set()
+    if trigger.get('conclusion') == 'success':
+        associated = {p['number'] for p in trigger.get('pull_requests', [])}
+        expected = {p['number'] for p in prs if p['number'] in associated and p['head']['sha'] == trigger.get('head_sha')}
     manifest_urls = []
     for pr in prs:
         n, sha = pr['number'], pr['head']['sha']
@@ -124,8 +131,12 @@ def main():
                 raise
             manifest_urls.append(n)
         except Exception as exc:
-            print(f'PR #{n}: unavailable or invalid preview: {exc}')
+            print(f'::warning::PR #{n}: unavailable or invalid preview: {exc}')
     print('Ready previews:', manifest_urls)
+    missing = expected - set(manifest_urls)
+    if missing:
+        # Do not report a green deployment after silently omitting the triggering PR.
+        raise RuntimeError(f'Current successful PR build has no valid preview: {sorted(missing)}')
 
 
 if __name__ == '__main__':
